@@ -8,7 +8,7 @@ import cupy
 import cupy as xp
 import numpy as np
 
-from ai.util import field_to_numpy_field
+from ai.util import create_puyo_channels
 from puyopuyo import game, search
 from puyopuyo.game import Field
 
@@ -59,7 +59,7 @@ class PuyoNet(chainer.Chain):
 
 
 def successive_fields_to_feature(current_field, previous_field):
-    return np.concatenate((field_to_numpy_field(current_field), field_to_numpy_field(previous_field)))
+    return np.concatenate((create_puyo_channels(current_field), create_puyo_channels(previous_field)))
 
 
 def test():
@@ -161,7 +161,7 @@ def test():
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
 
-    inputs = np.array([field_to_numpy_field(game.str_rows_to_field(field)) for field, chains in s_fields])
+    inputs = np.array([create_puyo_channels(game.str_rows_to_field(field)) for field, chains in s_fields])
     labels = np.array([[chains] for field, chains in s_fields], dtype=np.float32)
 
     for _ in range(100):

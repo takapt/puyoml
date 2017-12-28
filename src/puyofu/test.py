@@ -4,19 +4,26 @@ import numpy as np
 
 from ai import util
 from puyofu import train, puyofureader
-from puyopuyo import game
+from puyopuyo import game, search
 
 import sys
 
 
 def print_puyofu_with_prob(puyo_net, puyofu):
-    for fields in puyofu:
-        for field in fields:
-            # print(game.field_to_pretty_str(field))
-            game.print_color_field(field)
-            numpy_field = util.field_to_numpy_field(field)
+    for game_i, fields in enumerate(puyofu):
+        for turn, field in enumerate(fields):
+            print('turn: {:2d}'.format(turn))
             with chainer.using_config('train', False):
+                numpy_field = util.create_puyo_channels(field)
                 print(F.sigmoid(puyo_net(np.asarray([numpy_field]))))
+
+            detected_results = search.detect_chains_by_dropping_puyos(field, 2)
+            chains = 0
+            if detected_results:
+                chains = max(res.chains_detail.chains for res in detected_results)
+            print('chains: {}'.format(chains))
+
+            game.print_color_field(field)
 
 
 nico_puyofu = puyofureader.read_puyofu('../../data/part_nico.txt')

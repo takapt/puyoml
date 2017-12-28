@@ -18,7 +18,7 @@ import cupy as xp
 # import numpy as xp
 import numpy as np
 
-from ai.util import field_to_numpy_field
+from ai.util import create_puyo_channels
 from puyopuyo import game, search
 from puyopuyo.game import Field
 
@@ -29,7 +29,7 @@ class EpisodeGenerator:
         self.puyo_pair_generator = game.PuyoPairGenerator(seed)
 
     def generate_episode(self):
-        max_turns = 35
+        max_turns = 30
 
         current_field = Field()
         puyo_pairs = [self.puyo_pair_generator.generate_puyo_pair() for _ in range(max_turns)]
@@ -46,7 +46,7 @@ class EpisodeGenerator:
                 break
 
             with chainer.using_config('train', False):
-                human_pred = self.puyo_net(xp.asarray([util.field_to_numpy_field(result.field) for result in results])).data
+                human_pred = self.puyo_net(xp.asarray([util.create_puyo_channels(result.field) for result in results])).data
                 human_pred = chainer.cuda.to_cpu(human_pred)
 
             current_puyos = current_field.count_color_puyos()
@@ -106,7 +106,7 @@ def output_puyofu(games, path):
 
 
 def do_generate(puyo_net_version):
-    episodes = 5000
+    episodes = 200
 
     puyo_net = train.PuyoNet()
     chainer.serializers.load_npz('puyo_net_{}.npz'.format(puyo_net_version), puyo_net)
@@ -115,7 +115,7 @@ def do_generate(puyo_net_version):
     generator = EpisodeGenerator(puyo_net, None)
 
     puyofu = []
-    for episode_i in tqdm(range(episodes), total=episodes):
+    for episode_i in tqdm(range(episodes), total=episodes, desc='generator'):
         episode_result = generator.generate_episode()
         puyofu.append(episode_result.field_history)
 

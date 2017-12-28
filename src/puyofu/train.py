@@ -9,7 +9,7 @@ import cupy as xp
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
-from ai.util import field_to_numpy_field
+from ai.util import create_puyo_channels, create_chains_detail_feature
 from puyofu.puyofureader import read_puyofu
 from puyopuyo import game
 
@@ -18,20 +18,20 @@ class PuyoNet(chainer.Chain):
     def __init__(self):
         super(PuyoNet, self).__init__()
         with self.init_scope():
-            self.conv1 = L.Convolution2D(None, out_channels=60, ksize=3, pad=1, nobias=True)
-            self.bn1 = L.BatchNormalization(60)
+            self.conv1 = L.Convolution2D(None, out_channels=512, ksize=3, pad=1, nobias=True)
+            self.bn1 = L.BatchNormalization(512)
 
-            self.conv2 = L.Convolution2D(None, out_channels=60, ksize=3, pad=1, nobias=True)
-            self.bn2 = L.BatchNormalization(60)
+            self.conv2 = L.Convolution2D(None, out_channels=512, ksize=3, pad=1, nobias=True)
+            self.bn2 = L.BatchNormalization(512)
 
-            self.conv3 = L.Convolution2D(None, out_channels=60, ksize=3, pad=1, nobias=True)
-            self.bn3 = L.BatchNormalization(60)
+            self.conv3 = L.Convolution2D(None, out_channels=128, ksize=3, pad=1, nobias=True)
+            self.bn3 = L.BatchNormalization(128)
 
-            self.conv4 = L.Convolution2D(None, out_channels=60, ksize=3, pad=1, nobias=True)
-            self.bn4 = L.BatchNormalization(60)
-
-            self.conv5 = L.Convolution2D(None, out_channels=60, ksize=3, pad=1, nobias=True)
-            self.bn5 = L.BatchNormalization(60)
+            # self.conv4 = L.Convolution2D(None, out_channels=128, ksize=3, pad=1, nobias=True)
+            # self.bn4 = L.BatchNormalization(128)
+            #
+            # self.conv5 = L.Convolution2D(None, out_channels=128, ksize=3, pad=1, nobias=True)
+            # self.bn5 = L.BatchNormalization(128)
 
             self.fc1 = L.Linear(None, out_size=256, nobias=True)
             self.bn_fc1 = L.BatchNormalization(256)
@@ -45,22 +45,19 @@ class PuyoNet(chainer.Chain):
         h = self.conv1(x)
         h = self.bn1(h)
         h = F.relu(h)
-        # h = F.dropout(h, 0.2)
 
         h = self.conv2(h)
         h = self.bn2(h)
         h = F.relu(h)
-        # h = F.dropout(h, 0.2)
 
         h = self.conv3(h)
         h = self.bn3(h)
         h = F.relu(h)
-        # h = F.dropout(h, 0.2)
         #
-        h = self.conv4(h)
-        h = self.bn4(h)
-        h = F.relu(h)
-
+        # h = self.conv4(h)
+        # h = self.bn4(h)
+        # h = F.relu(h)
+        #
         # h = self.conv5(h)
         # h = self.bn5(h)
         # h = F.relu(h)
@@ -79,11 +76,24 @@ class PuyoNet(chainer.Chain):
         return self.fc3(h)
 
 
-def puyofu_to_numpy_fields(puyofu):
+def field_to_model_input(field):
+    chains_detail_feature = create_chains_detail_feature(field)
+    chains_position_arrays = chains_detail_feature.chains_position_numpy_array
+
+    chains = chains_detail_feature.chains_detail.chains
+    reversed_order_chains_position_arrays = np.zeros(chains_position_arrays.shape, dtype=np.float32)
+    reversed_order_chains_position_arrays[0:chains] = chains_position_arrays[chains:0:-1]
+
+    puyo_channels = create_puyo_channels(field)
+
+    return np.concatenate([puyo_channels, chains_position_arrays, reversed_order_chains_position_arrays])
+
+
+def puyofu_to_model_inputs(puyofu):
     numpy_fields = []
     for fields in puyofu:
         for field in fields:
-            numpy_fields.append(field_to_numpy_field(field))
+            numpy_fields.append(create_puyo_channels(field))
     return np.asarray(numpy_fields, dtype=np.float32)
 
 
@@ -109,7 +119,7 @@ def select_fields(puyofu, field_selector):
 def do_train(puyo_net_version):
     nico_puyofu = read_puyofu('../../data/nico_puyofu.txt')
 
-    gen_puyofu_list = []
+    gen_puyofu_list = ['../../data/part_weak.txt']
     for i in range(0, puyo_net_version):
         gen_puyofu_list.append('../../data/generator_puyofu_{}.txt'.format(i))
     gen_puyofu = []
@@ -124,11 +134,11 @@ def do_train(puyo_net_version):
     gen_puyofu = select_fields(gen_puyofu, lambda field: field not in nico_field_set)
 
     # Split puyofu grouping by game
-    nico_train, nico_test = train_test_split(nico_puyofu, test_size=0.2, random_state=puyo_net_version)
-    gen_train, gen_test = train_test_split(gen_puyofu, test_size=0.2, random_state=puyo_net_version)
+    nico_train, nico_test = train_test_split(nico_puyofu, test_size=0.1, random_state=puyo_net_version)
+    gen_train, gen_test = train_test_split(gen_puyofu, test_size=0.1, random_state=puyo_net_version)
 
-    nico_train, nico_test = puyofu_to_numpy_fields(nico_train), puyofu_to_numpy_fields(nico_test)
-    gen_train, gen_test = puyofu_to_numpy_fields(gen_train), puyofu_to_numpy_fields(gen_test)
+    nico_train, nico_test = puyofu_to_model_inputs(nico_train), puyofu_to_model_inputs(nico_test)
+    gen_train, gen_test = puyofu_to_model_inputs(gen_train), puyofu_to_model_inputs(gen_test)
 
     def to_chainer_dataset(numpy_fields, labels):
         numpy_fields = xp.asarray(numpy_fields)
@@ -150,14 +160,14 @@ def do_train(puyo_net_version):
     test_iter = chainer.iterators.SerialIterator(test, 128, repeat=False, shuffle=False)
 
     updater = chainer.training.StandardUpdater(train_iter, optimizer)
-    trainer = chainer.training.Trainer(updater, (2, 'epoch'))
+    trainer = chainer.training.Trainer(updater, (5, 'epoch'))
 
     trainer.extend(chainer.training.extensions.Evaluator(test_iter, model))
     trainer.extend(chainer.training.extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss',
          'main/accuracy', 'validation/main/accuracy', 'elapsed_time']))
     trainer.extend(chainer.training.extensions.LogReport())
-    # trainer.extend(chainer.training.extensions.dump_graph('main/loss'))
+    trainer.extend(chainer.training.extensions.dump_graph('main/loss'))
     trainer.extend(chainer.training.extensions.ProgressBar())
 
     trainer.run()
@@ -168,4 +178,4 @@ def do_train(puyo_net_version):
 
 
 if __name__ == '__main__':
-    do_train(6)
+    do_train(0)
