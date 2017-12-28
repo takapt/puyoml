@@ -95,6 +95,7 @@ class Field:
             self.__field[y][x] = Puyo.EMPTY
 
         return {
+            'vanished_pos': vanished_pos,
             'vanished_puyos': len(vanished_pos),
             'connection_bonus': connection_bonus,
             'color_bonus': Field.COLOR_BONUS[len(vanished_colors)]
