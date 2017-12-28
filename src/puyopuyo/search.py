@@ -1,6 +1,7 @@
+from collections import namedtuple
 from copy import deepcopy
 
-from puyopuyo.game import list_put_actions
+from puyopuyo.game import list_put_actions, Puyo
 from puyopuyo.game import Field
 from puyopuyo import game
 
@@ -44,7 +45,7 @@ def simulate_all_put_actions(field, puyo_pairs):
     return simulation_results
 
 
-class ChainsDetails:
+class ChainsDetail:
     def __init__(self, chains, vanished_at_nth_chain, field):
         self.chains = chains
         self.vanished_at_nth_chain = vanished_at_nth_chain
@@ -57,7 +58,7 @@ class ChainsDetails:
         return self.vanished_at_nth_chain[y][x]
 
 
-def calculate_chains_details(field_before_play):
+def calculate_chains_detail(field_before_play):
     field = deepcopy(field_before_play)
     original_ys = [
         [y if field.get_puyo(x, y) != game.Puyo.EMPTY else -1 for x in range(Field.WIDTH)]
@@ -87,4 +88,30 @@ def calculate_chains_details(field_before_play):
 
         chains += 1
 
-    return ChainsDetails(chains, vanished_at_nth_chain, field)
+    return ChainsDetail(chains, vanished_at_nth_chain, field)
+
+
+DetectChainsResult = namedtuple('DetectChainsResult', ['x', 'puyo', 'dropped_puyos', 'chains_detail'])
+
+
+def detect_chains_by_dropping_puyos(field, max_dropped_puyos):
+    original_field = deepcopy(field)
+
+    detected_chains_results = []
+    for x in range(Field.WIDTH):
+        original_height = original_field.get_height(x)
+        max_put_y = min(original_height + max_dropped_puyos, Field.HEIGHT)
+        for puyo in Puyo.color_puyos():
+            field = deepcopy(original_field)
+            for y in range(original_height, max_put_y):
+                assert field.get_puyo(x, y) == Puyo.EMPTY
+                field.set_puyo(x, y, puyo)
+                if len(field.list_connected_pos(x, y)) >= Field.VANISH_THRESHOLD:
+                    chains_details = calculate_chains_detail(field)
+                    detect_chains_result = DetectChainsResult(x, puyo, y - original_height + 1, chains_details)
+                    detected_chains_results.append(detect_chains_result)
+
+                    # Should I continue dropping puyos?
+                    break
+
+    return detected_chains_results

@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from puyopuyo import game
 from puyopuyo.game import PuyoPair, Puyo, Field
-from puyopuyo.search import simulate_all_put_actions, calculate_chains_details
+from puyopuyo.search import simulate_all_put_actions, calculate_chains_detail, detect_chains_by_dropping_puyos
 
 
 class SimulationAllPutActionsTest(TestCase):
@@ -31,8 +31,8 @@ class SimulationAllPutActionsTest(TestCase):
         self.assertEqual(2280, max(result.score for result in simulation_results))
 
 
-class ChainsDetailsTest(TestCase):
-    def test_calculate_chains_details(self):
+class ChainsDetailTest(TestCase):
+    def test_calculate_chains_detail(self):
         rows = [
             '      ',
             '      ',
@@ -49,7 +49,7 @@ class ChainsDetailsTest(TestCase):
             'BBRYBB',
         ]
         field = game.str_rows_to_field(rows)
-        chains_details = calculate_chains_details(field)
+        chains_details = calculate_chains_detail(field)
 
         self.assertEqual(5, chains_details.chains)
 
@@ -89,5 +89,28 @@ class ChainsDetailsTest(TestCase):
             [chains_details.get_nth_chain_vanish(x, y) for x in range(Field.WIDTH)]
             for y in range(Field.HEIGHT - 1, -1, -1)
         ]
-
         self.assertListEqual(expected_nth_chain_vanish, actual_nth_chain_vanish)
+
+
+class DetectChainsTest(TestCase):
+    def test_detect_chains_by_dropping_puyos(self):
+        rows = [
+            '      ',
+            '      ',
+            '      ',
+            '      ',
+            '      ',
+            'B     ',
+            'Y     ',
+            'Y  B  ',
+            'G YB  ',
+            'G RYB ',
+            'YBRYB ',
+            'YYBRYB',
+            'BBRYBB',
+        ]
+        field = game.str_rows_to_field(rows)
+
+        detect_chains_results = detect_chains_by_dropping_puyos(field, 2)
+        self.assertEqual(6, len(detect_chains_results))
+        self.assertEqual(5, max(result.chains_detail.chains for result in detect_chains_results))

@@ -3,6 +3,7 @@ from enum import Enum
 from random import Random
 from termcolor import colored
 
+
 class Puyo(Enum):
     EMPTY = 0
     RED = 1
@@ -10,6 +11,10 @@ class Puyo(Enum):
     YELLOW = 3
     GREEN = 4
     OJAMA = 5
+
+    @classmethod
+    def color_puyos(cls):
+        return [Puyo.RED, Puyo.BLUE, Puyo.YELLOW, Puyo.GREEN]
 
     def is_color_puyo(self):
         return 1 <= self.value <= 4
@@ -38,6 +43,12 @@ class Field:
 
     def set_puyo(self, x, y, puyo):
         self.__field[y][x] = puyo
+
+    def get_height(self, x):
+        y = 0
+        while y < Field.HEIGHT and self.__field[y][x] != Puyo.EMPTY:
+            y += 1
+        return y
 
     def put_puyo_pair(self, puyo_pair, put_action):
         self.__field[put_action.get_center_y()][put_action.get_center_x()] = puyo_pair.get_center()
