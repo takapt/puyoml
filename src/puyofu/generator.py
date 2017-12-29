@@ -21,6 +21,7 @@ import numpy as np
 from ai.util import create_puyo_channels
 from puyopuyo import game, search
 from puyopuyo.game import Field
+import joblib
 
 
 class EpisodeGenerator:
@@ -46,7 +47,8 @@ class EpisodeGenerator:
                 break
 
             with chainer.using_config('train', False):
-                human_pred = self.puyo_net(xp.asarray([util.create_puyo_channels(result.field) for result in results])).data
+                model_inputs = [train.create_model_input(result.field) for result in results]
+                human_pred = self.puyo_net(xp.asarray(model_inputs)).data
                 human_pred = chainer.cuda.to_cpu(human_pred)
 
             current_puyos = current_field.count_color_puyos()
@@ -130,6 +132,7 @@ def do_generate(puyo_net_version):
 if __name__ == '__main__':
     import sys
     puyo_net_version = int(sys.argv[1])
+    print('puyo_net_version: {}'.format(puyo_net_version))
     train.do_train(puyo_net_version)
     do_generate(puyo_net_version)
 

@@ -31,14 +31,19 @@ def create_chains_detail_feature(field):
     :param field:
     :return: a list of numpy arrays
     """
+
+    max_channels = 20
+    chains_positions = np.zeros((max_channels, Field.HEIGHT, Field.WIDTH), dtype=np.float32)
+
     detect_chains_results = search.detect_chains_by_dropping_puyos(field, max_dropped_puyos=2)
+    if not detect_chains_results:
+        return ChainsDetailFeature(search.ChainsDetail(0, None, None), chains_positions)
+
     best_result = detect_chains_results[np.argmax(result.chains_detail.chains for result in detect_chains_results)]
     chains_detail = best_result.chains_detail
 
-    max_channels = 20
-    chains_positions = np.zeros((max_channels, Field.WIDTH, Field.HEIGHT), dtype=np.float32)
     for y in range(Field.HEIGHT):
         for x in range(Field.WIDTH):
             if chains_detail.is_vanished(x, y):
-                chains_positions[chains_detail.get_nth_chain_vanish(x, y), x, y] = 1
-    return ChainsDetailFeature(chains_positions, chains_detail)
+                chains_positions[chains_detail.get_nth_chain_vanish(x, y), y, x] = 1
+    return ChainsDetailFeature(chains_detail, chains_positions)

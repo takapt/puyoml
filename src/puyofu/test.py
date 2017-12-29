@@ -43,7 +43,7 @@ print(len(gen_puyofu))
 #     print(F.sigmoid(puyo_net(train.puyofu_to_numpy_fields(gen_puyofu))).data.mean())
 
 print('gen')
-print_puyofu_with_prob(puyo_net, gen_puyofu[:500])
+print_puyofu_with_prob(puyo_net, gen_puyofu)
 
 # print('nico')
 # print_puyofu_with_prob(puyo_net, nico_puyofu[:50])
