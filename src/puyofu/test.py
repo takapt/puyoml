@@ -14,7 +14,7 @@ def print_puyofu_with_prob(puyo_net, puyofu):
         for turn, field in enumerate(fields):
             print('turn: {:2d}'.format(turn))
             with chainer.using_config('train', False):
-                numpy_field = util.create_puyo_channels(field)
+                numpy_field = train.create_model_input(field)
                 print(F.sigmoid(puyo_net(np.asarray([numpy_field]))))
 
             detected_results = search.detect_chains_by_dropping_puyos(field, 2)
